@@ -66,6 +66,23 @@ int main(){
 		.app = "firefox",
 		.arg = "-private -url ",
 		.link = true
+		
+		/*
+		// chromium on Linux
+		.app = "chromium",
+    		.arg = "--new-window -app=",
+    		.link = true
+		
+		//Chrome on Windows
+		.app = "start chrome",
+   		.arg = "--new-window -app=",
+		.link = true
+		
+		//Firefox on Windows
+		.app = "start firefox",
+    		.arg = "-private -url ",
+		.link = true
+		*/
 	};
 
 	my_window.bind("MyButtonID1", close);
