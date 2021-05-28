@@ -1,0 +1,409 @@
+#ifndef UNICODE
+#define UNICODE
+#endif
+
+// WebUI header
+#include <webui/webui.hpp>
+
+// C++ headers
+#include <iostream>
+#include <sstream> // change intiger to string
+
+// Win32 headers
+#ifdef _WIN32
+#include <windows.h>
+#endif
+
+// SQLite header
+#include <SQLite/sqlite3.h>
+
+using namespace std;
+   sqlite3 *db;
+   char *zErrMsg = 0;
+   const char* data1 = "Callback function called";
+   std::string sql;
+   string s ;
+   int rc;
+   int first_callback_count ;
+
+static int callback(void *data1, int argc, char **argv, char **azColName);
+static int callback_js_table_single_selection(void *data1, int argc, char **argv, char **azColName);
+void clear_table();
+std::string int_to_str(int a) // convert intiger to string
+{
+    stringstream ss;
+    ss<<a;
+    string jj;
+    ss>>jj;
+    return jj;
+}
+void search_book() ;
+
+webui::window win;
+
+// put data to Data Base
+void put_data()
+{
+   // create table student
+   sql = "CREATE TABLE STUDENT("  \
+         "ID INTEGER PRIMARY KEY  AUTOINCREMENT," \
+         "NAME           TEXT    NOT NULL," \
+         "AGE            INT     NOT NULL," \
+         "LEVEL          INT );";
+    rc = sqlite3_exec(db, sql.c_str(), callback, 0, &zErrMsg);
+   if( rc != SQLITE_OK ){
+      fprintf(stderr, "SQL error: %s\n", zErrMsg);
+      sqlite3_free(zErrMsg);
+   } else {
+      fprintf(stdout, "Table created successfully\n");
+   }
+
+    // add list student to table STUDENT
+   sql = "INSERT INTO STUDENT (ID,NAME,AGE,LEVEL) "  \
+         "VALUES (null, 'Samir', 21, 2 ); " \
+         "INSERT INTO STUDENT (ID,NAME,AGE,LEVEL) "  \
+         "VALUES (null, 'Ali', 23, 1 ); "     \
+         "INSERT INTO STUDENT (ID,NAME,AGE,LEVEL) " \
+         "VALUES (null, 'Kamel', 22, 3 );" \
+         "INSERT INTO STUDENT (ID,NAME,AGE,LEVEL) " \
+         "VALUES (null, 'Riad', 25, 3 );" \
+         "INSERT INTO STUDENT (ID,NAME,AGE,LEVEL) " \
+         "VALUES (null, 'Zobir', 25, 3 );";
+	rc = sqlite3_exec(db, sql.c_str(), callback, 0, &zErrMsg);
+   if( rc != SQLITE_OK ){
+      fprintf(stderr, "SQL error: %s\n", zErrMsg);
+      sqlite3_free(zErrMsg);
+   } else {
+      fprintf(stdout, "Table updated successfully\n");
+   }
+}
+
+// main page
+const std::string html = R"V0G0N(
+<!DOCTYPE html>
+<html>
+    <head>
+    <title> student</title>
+     <style>
+            label {
+                display: inline-block;
+                width: 140px;
+            }
+        table, td {
+          border: 1px solid black;
+        }
+    </style>
+    <style type="text/css">
+        td {border: 1px #DDD solid; padding: 5px; cursor: pointer;}
+    </style>
+    </head>
+    <body>
+        <h1>student</h1><br>
+        <button id="add_student">add</button>
+        <button id="search_student">search</button>
+        <button id="edit_student"> edit </button>
+        <button id="clear_table">clear table</button><br>
+        <input type="checkbox" id="id_student"    value="tile"></input>
+        <label name="id_student"> ID </label>
+        <input type="checkbox" id="name_student"  value="tile"></input>
+        <label name="name_student">name</label>
+        <input type="checkbox" id="age_student"   value="tile"></input>
+        <label name="age_student">age</label>
+        <input type="checkbox" id="level_student" value="tile"></input>
+        <label name="level_student">level</label><br>
+        <input type="number" id="id_student_input" maxlength="20" size="15"></input>
+        <input type="text" id="name_input" maxlength="20" size="15"></input>
+        <input type="number" id="age_input" maxlength="20" size="15"></input>
+        <input type="number" id="level_input" maxlength="20" size="15"></input><br>
+<table id="myTable">
+</table>
+<script>
+        var mytable = document.getElementById('myTable');
+
+
+        function onlyOne(checkbox) {
+            var checkboxes = document.getElementsByName('check')
+            checkboxes.forEach((item) => {
+                if (item !== checkbox) item.checked = false
+            })
+        }
+</script>
+
+    </body>
+</html>
+)V0G0N";
+
+void search_student()
+{
+    first_callback_count = 1 ;
+    clear_table();
+    short int bs[5];
+    struct bst {
+        std::string str_sql;  //colone table SQL
+        std::string str_js;   // texte input js
+    };
+    bst bst[4];
+    bst[0].str_sql = " ID ";
+    bst[1].str_sql = " NAME " ;
+    bst[2].str_sql = " AGE " ;
+    bst[3].str_sql = " LEVEL " ;
+
+    bst[0].str_js = "id_student_input";
+    bst[1].str_js = "name_input" ;
+    bst[2].str_js = "age_input" ;
+    bst[3].str_js = "level_input" ;
+
+    bs[0] = win.run_js("return document.getElementById('id_student').checked;") == "true" ;
+    bs[1] = win.run_js("return document.getElementById('name_student').checked;") == "true" ;
+    bs[2] = win.run_js("return document.getElementById('age_student').checked;") == "true" ;
+    bs[3] = win.run_js("return document.getElementById('level_student').checked;") == "true" ;
+    sql = "SELECT * from STUDENT ";// where price = 800 , AUTHOR = 'OMAR' ;";
+    int in = 1 ;
+    std::string bs_js ;
+    for(int ink = 0 ; ink < 4; ink++ )
+    {
+        // SELECT * FROM STUDENT WHERE (first cond) AND (seconde condition) AND (third cond) ADN .....
+        // check the cases selected for read the field involved
+        bs_js = "return document.getElementById('" ;
+        if( bs[ink] == 1 )
+        {
+            bs[ink] = in ;
+        }
+        if( bs[ink] == 1 ) // first condition need word WHERE
+        {
+            bs_js.append( bst[ink].str_js );
+            bs_js.append( "').value;" ) ;
+            sql.append( " WHERE " ) ;
+            sql.append( bst[ink].str_sql ) ;
+            sql.append( " LIKE " ) ;
+            sql.append("'%");
+            sql.append(win.run_js(bs_js));
+            sql.append("%' ");
+            in++;
+        }else if(bs[ink]>1) // second and more need word AND
+        {
+            bs_js.append( bst[ink].str_js );
+            bs_js.append("').value;");
+            sql.append(" AND ");
+            sql.append(bst[ink].str_sql);
+            sql.append(" LIKE ");
+            sql.append("'%");
+            sql.append(win.run_js(bs_js));
+            sql.append("%' ");
+            in++;
+        }
+    }
+    sql.append(" ; ");
+}
+void close(webui::event e) // Close the program
+{
+    webui::exit();
+}
+void add_student(webui::event e) //adding new student to DataBase
+{
+    s = "INSERT INTO STUDENT (ID,NAME,AGE,LEVEL) VALUES (null,'" + win.run_js(" return document.getElementById('name_input').value;");
+    s.append("', "  + win.run_js("return document.getElementById('age_input').value;") + " , ");
+    s.append( win.run_js ( "return  document.getElementById('level_input').value;") + " )  ; " );
+    rc = sqlite3_exec(db, s.c_str(), callback, (void*)data1, &zErrMsg);
+    if( rc != SQLITE_OK )
+    {
+        std::string errmsg = "alert('SQL error: " ;
+        errmsg.append(zErrMsg);
+        errmsg.append("');");
+        win.run_js( errmsg);
+        sqlite3_free(zErrMsg);
+    }
+}
+void search_student(webui::event e) //search a student at DataBase
+{
+    search_student();
+    rc = sqlite3_exec(db, sql.c_str(), callback_js_table_single_selection, (void*)data1, &zErrMsg);
+    if( rc != SQLITE_OK )
+    {
+        std::string errmsg = "alert('SQL error: " ;
+        errmsg.append(zErrMsg);
+        errmsg.append("');");
+        win.run_js( errmsg);
+        sqlite3_free(zErrMsg);
+    }
+}
+void clear_table(webui::event)
+{
+    clear_table();
+}
+
+void edit_student(webui::event)
+{
+    short int bs[5];
+    struct bst {
+        std::string str_sql;  //colone table SQL
+        std::string str_js;   // texte input js
+    };
+    bst bst[4];
+    bst[0].str_sql = " ID ";
+    bst[1].str_sql = " NAME " ;
+    bst[2].str_sql = " AGE " ;
+    bst[3].str_sql = " LEVEL " ;
+
+    bst[0].str_js = "id_student_input";
+    bst[1].str_js = "name_input" ;
+    bst[2].str_js = "age_input" ;
+    bst[3].str_js = "level_input" ;
+
+    bs[0] = win.run_js("return document.getElementById('id_student').checked;") == "true" ;
+    bs[1] = win.run_js("return document.getElementById('name_student').checked;") == "true" ;
+    bs[2] = win.run_js("return document.getElementById('age_student').checked;") == "true" ;
+    bs[3] = win.run_js("return document.getElementById('level_student').checked;") == "true" ;
+    sql = "UPDATE STUDENT ";// where price = 800 AND AUTHOR = 'OMAR' ;";
+    int in = 1 ;
+    std::string bs_js , bs2_js;
+    for(int ink = 0 ; ink < 5; ink++ )
+    {
+        //UPDATE STUDENT SET column1 = value1, column2 = value2...., columnN = valueN WHERE ID = 6;
+        // check the cases selected for read the field involved
+        bs_js = "return document.getElementById('" ;
+        if( bs[ink] == 1 )
+        {
+            bs[ink] = in ;
+        }
+        if( bs[ink] == 1 ) // first condition need word WHERE
+        {
+            bs_js.append( bst[ink].str_js );
+            bs2_js = bs_js ;
+            bs_js.append( "').value;" ) ;
+            bs2_js.append( "').type;" ) ;
+            sql.append( " SET " ) ;
+            sql.append( bst[ink].str_sql ) ;
+            sql.append( " = " );
+            if(win.run_js(bs2_js) != "number" )
+                sql.append("'");
+            sql.append(win.run_js(bs_js));
+            if(win.run_js(bs2_js) != "number" )
+                sql.append("' ");
+            in++;
+        }
+        else if(bs[ink]>1) // second and more need word AND
+        {
+            bs_js.append( bst[ink].str_js );
+            bs2_js = bs_js ;
+            bs_js.append("').value;");
+            bs2_js.append( "').type;" ) ;
+            sql.append(" , ");
+            sql.append(bst[ink].str_sql);
+            sql.append(" = ");
+            if(win.run_js(bs2_js) != "number" )
+                sql.append("'");
+            sql.append(win.run_js(bs_js));
+            if(win.run_js(bs2_js) != "number" )
+                sql.append("' ");
+            in++;
+        }
+    }
+    if(in > 1 )
+    {
+        s = "var ii; for(ii = 1 ; ii < document.getElementById('myTable').rows.length; ii++) "  \
+        "{ if(document.getElementById('myTable').rows[ii].cells[0].firstElementChild.checked == true) " \
+        "{ return document.getElementById('myTable').rows[ii].cells[1].innerText;}}";
+        s = win.run_js(s);
+        sql.append(" WHERE ID = ");
+        sql.append(s);
+        sql.append(" ; ");
+        if(s != "undefined" )
+        {
+            rc = sqlite3_exec(db, sql.c_str(), callback_js_table_single_selection, (void*)data1, &zErrMsg);
+            std::cout<<sql<<std::endl;
+            if( rc != SQLITE_OK )
+            {
+                std::string errmsg = "alert('SQL error: " ;
+                errmsg.append(zErrMsg);
+                errmsg.append("');");
+                win.run_js( errmsg);
+                sqlite3_free(zErrMsg);
+            }
+            else
+            {
+                win.run_js( "alert(' SQL updated ');");
+            }
+        }
+        else
+        {
+            win.run_js( "alert('please select a student ');" );
+        }
+    }
+    else
+    {
+        win.run_js("alert('Please select one column as the minimum to edit and set the new value')");
+    }
+}
+
+int main(){
+   remove("test.db");
+   rc = sqlite3_open("test.db", &db);
+
+   put_data();
+   win.bind("exit",close);
+   win.bind("clear_table",clear_table);
+   win.bind("add_student",add_student);
+   win.bind("search_student",search_student);
+   win.bind("edit_student",edit_student);
+
+   if(!win.show(&html, webui::browser::chrome))
+      win.show(&html);
+
+   std::thread v(webui::loop);
+   v.join();
+   sqlite3_close(db);
+   return 0;
+}
+
+#ifdef _WIN32 // Win32 entry point (if needed)
+int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE, PWSTR pCmdLine, int nCmdShow){
+   main();
+   return 0;
+}
+#endif
+
+static int callback(void *data1, int argc, char **argv, char **azColName){
+   int i;
+   fprintf(stderr, "%s: ", (const char*)data1);
+   for(i = 0; i<argc; i++){
+      printf("%s = %s\n", azColName[i], argv[i] ? argv[i] : "NULL");
+   }
+   printf("\n");
+   return 0;
+}
+
+static int callback_js_table_single_selection(void *data1, int argc, char **argv, char **azColName){
+    int i;
+    std::string js;
+    if(first_callback_count)
+    {
+        js = " var row1 = mytable.insertRow(document.getElementById('myTable').rows.length); ";
+        js.append(" var cell0 =row1.insertCell(0); cell0.innerHTML = \"<td width='2%'></td>\"; \n");
+    for(i = 0; i<argc; i++){//printf("%s = %s\n", azColName[i], argv[i] ? argv[i] : "NULL");
+        js.append(" var cell"+ int_to_str(i+1) + " = row1.insertCell(" + int_to_str(i+1) + "); ");
+        js.append("cell"+ int_to_str(i+1) + ".innerHTML = '" );
+        js.append(azColName[i] ? azColName[i] : "NULL");
+        js.append("' ;");
+    }
+    win.run_js(js.c_str());
+    first_callback_count = 0 ;
+    }
+
+        js = " var row1 = mytable.insertRow(document.getElementById('myTable').rows.length); ";
+        js.append(" var cell0 =row1.insertCell(0); cell0.innerHTML = \"<td width='2%'><input type='checkbox' name='check' onclick='onlyOne(this)' /></td>\"; \n");
+    for(i = 0; i<argc; i++){//printf("%s = %s\n", azColName[i], argv[i] ? argv[i] : "NULL");
+        js.append(" var cell"+ int_to_str(i+1) + " = row1.insertCell(" + int_to_str(i+1) + "); ");
+        js.append("cell"+ int_to_str(i+1) + ".innerHTML = '" );
+        js.append(argv[i] ? argv[i] : "NULL");
+        js.append("' ;");
+    }
+    win.run_js(js.c_str());
+    return 0;
+}
+
+void clear_table(){
+    win.run_js(R"V0G0N(for( ; document.getElementById("myTable").rows.length ; ){
+   document.getElementById("myTable").deleteRow(0);
+    })V0G0N");
+}
